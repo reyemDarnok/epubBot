@@ -1,5 +1,3 @@
-/test.epub
-
 # Editors
 .vscode/
 .idea/
@@ -125,3 +123,7 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# my files
+/config.json
+*.epub
