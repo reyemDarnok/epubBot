@@ -1,6 +1,6 @@
 #!/bin/env python3
 import re
-from typing import List
+from typing import List, Generator
 
 from ebooklib import epub
 import praw
@@ -33,21 +33,24 @@ def create_reddit_instance() -> praw.reddit.Reddit:
     )
 
 
-def get_trigger_comments(reddit: praw.Reddit) -> List[praw.reddit.Comment]:
-    return [reddit.comment(url='https://www.reddit.com/r/HFY/comments/f6iwyk/of_men_and_dragons_chapter_1/fi53y86'
-                               '?utm_source=share&utm_medium=web2x&context=3')]
+def get_trigger_comments(reddit: praw.Reddit) -> Generator[praw.reddit.Comment, None, None]:
+    generator = reddit.inbox.mentions()
+    for comment in generator:
+        comment.mark_read()
+        yield comment
 
 
 def create_epub(comment: praw.reddit.Comment, reddit: praw.reddit.Reddit):
+    # noinspection PyBroadException
     try:
-        args = command_argparse('')  # comment.body
+        args = command_argparse(comment.body)
         submission = comment.submission
         chapters = tuple()
         submission_html = markdown.markdown(submission.selftext)
         book = epub.EpubBook()
         soup = BeautifulSoup(submission_html, features='lxml')
         first_link = soup.find('a', text=re.compile(re.escape(args.first), re.IGNORECASE))
-        chapter_num = 1
+        post_num = 1
         title = submission.title
         if first_link is not None:
             submission = reddit.submission(url=first_link.attrs['href'])
@@ -63,20 +66,26 @@ def create_epub(comment: praw.reddit.Comment, reddit: praw.reddit.Reddit):
 
         set_metadata(book, submission)
 
-        while submission is not None:
-            print(f'Getting Chapter {chapter_num}')
-            chapter = epub.EpubHtml(title=submission.title, file_name=f'{submission.title}.xhtml')
-            chapter_num += 1
-            chapter.content = submission_html
-            book.add_item(chapter)
-            chapters += tuple([chapter])
-            next_link = soup.find('a', text=re.compile(re.escape(args.next), re.IGNORECASE))
-            if next_link is not None:
-                submission = reddit.submission(url=next_link.attrs['href'])
-                submission_html = markdown.markdown(submission.selftext)
-                soup = BeautifulSoup(submission_html, features='lxml')
-            else:
-                submission = None
+        for submission in yield_submissions(reddit, submission, args.next):
+            print(f'Getting post {post_num}')
+            post_num += 1
+            if args.max_chapters is not None and post_num > args.max_chapters:
+                break
+            chapter_texts = submission.selftext.split(args.chapter_break * 3)
+            chapter_texts = [x for x in chapter_texts if x != '']
+            if not args.no_intro:
+                chapter_texts = chapter_texts[1:]
+            if not args.no_outro:
+                chapter_texts = chapter_texts[:-1]
+            chapter_num = 1
+            for text in chapter_texts:
+                chapter_title = submission.title if len(chapter_texts) == 1 else f'{submission.title} {chapter_num}'
+                chapter_num += 1
+                submission_html = markdown.markdown(text)
+                chapter = epub.EpubHtml(title=chapter_title, file_name=f'{chapter_title}.xhtml')
+                chapter.content = submission_html
+                book.add_item(chapter)
+                chapters += tuple([chapter])
 
         # define Table Of Contents
         book.toc = (epub.Link('toc.xhtml', 'Totality', 'total'),
@@ -88,7 +97,9 @@ def create_epub(comment: praw.reddit.Comment, reddit: praw.reddit.Reddit):
         # write to the file
         epub.write_epub(f'{title}.epub', book, {})
     except argparse.ArgumentError:
-        print(create_arg_parser().print_help())
+        comment.reply(create_arg_parser().format_help())
+    except:
+        comment.reply("Encountered unknown error while creating epub. Check your arguments")
 
 
 def command_argparse(command: str) -> argparse.Namespace:
@@ -96,25 +107,39 @@ def command_argparse(command: str) -> argparse.Namespace:
     return parser.parse_args(shlex.split(command)[1:])
 
 
+def yield_submissions(reddit: praw.reddit.Reddit, submission: praw.reddit.Submission, next_pattern: str) \
+        -> Generator[praw.reddit.Submission, None, None]:
+    yield submission
+    soup = BeautifulSoup(markdown.markdown(submission.selftext), features='lxml')
+    next_link = soup.find('a', text=re.compile(re.escape(next_pattern), re.IGNORECASE))
+    while next_link is not None:
+        submission = reddit.submission(url=next_link.attrs['href'])
+        yield submission
+        soup = BeautifulSoup(markdown.markdown(submission.selftext), features='lxml')
+        next_link = soup.find('a', text=re.compile(re.escape(next_pattern), re.IGNORECASE))
+
+
 def create_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="A bot that creates epubs from reddit posts.")
     parser.add_argument('-n', '--next', type=str, default='Next',
                         help='The link text for the link to the next the chapter, if any. '
-                             'Defaults to "Next".')
+                             'Case insensitive and accepts partial matches. Defaults to "Next".')
     parser.add_argument('-p', '--previous', type=str, default='Previous',
                         help='The link text for the link to the previous chapter, if any. '
-                             'Defaults to "Previous".')
+                             'Case insensitive and accepts partial matches. Defaults to "Previous".')
     parser.add_argument('-f', '--first', type=str, default='First',
                         help='The link text for the link to the first chapter, if any. '
-                             'Defaults to "First".')
+                             'Case insensitive and accepts partial matches. Defaults to "First".')
     parser.add_argument('-c', '--chapter-break', type=str, default='-',
                         help='This sequence repeated three or more times signals a new chapter. Defaults to "-".')
-    parser.add_argument('--has-intro', type=bool, default=True,
-                        help='Whether to consider the first chapter of a post to be introduction.'
-                             'Only the first chapters introduction will be included in the epub. Defaults to true.')
-    parser.add_argument('--has-outro', type=bool, default=True,
-                        help='Whether to consider the last chapter of a post to be an outro, to be discarded entirely.'
+    parser.add_argument('--no-intro', action="store_true",
+                        help='The first chapter is not introduction, to be discarded.'
                              'Defaults to true.')
+    parser.add_argument('--no-outro', action="store_true",
+                        help='The last chapter of a post is not an outro, to be discarded entirely.'
+                             'Defaults to true.')
+    parser.add_argument('-m', '--max-chapters', type=int, default=None,
+                        help='How many chapters are at most detected. Defaults to no limit')
     return parser
 
 
