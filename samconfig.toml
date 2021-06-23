@@ -1,0 +1,9 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "epubApp"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1n73g3fhmg0yj"
+s3_prefix = "epubApp"
+region = "us-east-2"
+capabilities = "CAPABILITY_IAM"
