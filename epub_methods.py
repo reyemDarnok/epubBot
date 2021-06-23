@@ -1,5 +1,5 @@
 import argparse
-from typing import Tuple
+from typing import Tuple, Union, List
 
 from ebooklib import epub
 from praw import reddit
@@ -14,7 +14,8 @@ def design(book: epub.EpubBook, chapters: Tuple[epub.EpubHtml]):
     # add CSS file
     book.add_item(nav_css)
     # basic spine
-    spine = ['nav'] + list(chapters)
+    spine: List[Union[str, epub.EpubHtml]] = ['nav']
+    spine += list(chapters)
     book.spine = spine
 
 
