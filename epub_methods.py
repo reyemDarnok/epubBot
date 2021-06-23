@@ -1,7 +1,11 @@
+import argparse
+from typing import Tuple
+
 from ebooklib import epub
+from praw import reddit
 
 
-def design(book, chapters):
+def design(book: epub.EpubBook, chapters: Tuple[epub.EpubHtml]):
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())
     # define CSS style
@@ -14,7 +18,7 @@ def design(book, chapters):
     book.spine = spine
 
 
-def set_metadata(book, submission, args):
+def set_metadata(book: epub.EpubBook, submission: reddit.Submission, args: argparse.Namespace):
     book.set_identifier(submission.fullname)
     book.set_title(submission.title if args.title is None else args.title)
     book.set_language(args.language)
