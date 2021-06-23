@@ -5,8 +5,8 @@ from ebooklib import epub
 import praw
 import markdown
 from bs4 import BeautifulSoup
-import boto3
 
+from aws_interaction import upload_to_s3
 from epub_methods import design, set_metadata
 from project_argparse import command_argparse, create_arg_parser
 from reddit_interaction import create_reddit_instance, get_trigger_comments, yield_submissions
@@ -17,10 +17,6 @@ def main():
     triggers = get_trigger_comments(reddit)
     for comment in triggers:
         create_epub(comment, reddit)
-
-
-def upload_to_s3(filename: str):
-    pass
 
 
 def create_epub(comment: praw.reddit.Comment, reddit: praw.reddit.Reddit):
@@ -85,10 +81,14 @@ def create_epub(comment: praw.reddit.Comment, reddit: praw.reddit.Reddit):
     # noinspection PyBroadException
     try:
         epub.write_epub(f'{title}.epub', book, {})
-        upload_to_s3(f'{title}.epub')
+        upload_to_s3(f'{title}.epub', 'epub-bucket-reyem')
     except:
         comment.reply('Failed to create epub. Maybe one of your parameters is set wrong? Common mistakes are empty '
                       'chapters')
+
+
+def lambda_handler(event, context):
+    main()
 
 
 if __name__ == '__main__':
