@@ -10,8 +10,6 @@ from epub_methods import design, set_metadata
 from project_argparse import command_argparse, create_arg_parser
 from reddit_interaction import create_reddit_instance, get_trigger_comments, yield_submissions
 
-version = '0.1'
-
 
 def main():
     reddit = create_reddit_instance()
@@ -63,6 +61,7 @@ def create_epub(comment: praw.reddit.Comment, reddit: praw.reddit.Reddit):
         for text in chapter_texts:
             chapter_title = submission.title if len(chapter_texts) == 1 else f'{submission.title} {chapter_num}'
             chapter_num += 1
+            text = f'#{chapter_title}\n' + text
             submission_html = markdown.markdown(text)
             chapter = epub.EpubHtml(title=chapter_title, file_name=f'{chapter_title}.xhtml')
             chapter.content = submission_html

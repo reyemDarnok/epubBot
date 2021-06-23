@@ -6,7 +6,7 @@ import markdown
 import praw
 from bs4 import BeautifulSoup
 
-from main import version
+version = '0.3'
 
 
 def create_reddit_instance() -> praw.reddit.Reddit:
@@ -23,9 +23,9 @@ def create_reddit_instance() -> praw.reddit.Reddit:
 
 
 def get_trigger_comments(reddit: praw.Reddit) -> Generator[praw.reddit.Comment, None, None]:
-    generator = reddit.inbox.mentions()
+    generator = reddit.inbox.unread()
     for comment in generator:
-        if comment.new:
+        if comment is praw.reddit.Comment:
             comment.mark_read()
             yield comment
 
