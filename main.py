@@ -22,6 +22,8 @@ def create_epub(comment: praw.reddit.Comment, reddit: praw.reddit.Reddit):
     # noinspection PyBroadException
     try:
         args = command_argparse(comment.body)
+    except ValueError:
+        return
     except:
         comment.reply(create_arg_parser().format_help())
         return

@@ -4,7 +4,10 @@ import shlex
 
 def command_argparse(command: str) -> argparse.Namespace:
     parser = create_arg_parser()
-    return parser.parse_args(shlex.split(command)[1:])
+    argv = shlex.split(command)
+    if argv[0] != 'u/epuBot':
+        raise ValueError('Not a invocation')
+    return parser.parse_args(argv[1:])
 
 
 def create_arg_parser() -> argparse.ArgumentParser:
