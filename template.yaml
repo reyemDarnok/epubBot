@@ -1,0 +1,27 @@
+Transform: AWS::Serverless-2021-06-23
+Description: >
+  epubBot
+
+  Turns reddit posts into epubs
+
+Globals:
+  Function:
+    Timeout: 3000
+
+Resources:
+  MentionsToEpubsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: epubBotCode/
+      Description: Scans reddit inbox for mentions and creates epubs from the submissions they are attached to.
+      Handler: aws_interaction.lambda_handler
+      Runtime: python3.8
+      Role: arn:aws:iam::117848079541:role/service-role/epubBot-role-d0a2g2ki
+      Events:
+        Scheduled:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 hour)
+            Name: hourly
+            Description: Fires once an hour
+            Enabled: True

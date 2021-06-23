@@ -125,5 +125,6 @@ venv.bak/
 dmypy.json
 
 # my files
-/config.json
+/epubBotCode/config.json
+/.aws-sam
 *.epub
