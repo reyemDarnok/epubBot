@@ -14,7 +14,7 @@ Resources:
     Properties:
       CodeUri: epubBotCode/
       Description: Scans reddit inbox for mentions and creates epubs from the submissions they are attached to.
-      Handler: main.lambda_handler
+      Handler: main.main
       Runtime: python3.8
       Role: arn:aws:iam::117848079541:role/service-role/epubBot-role-d0a2g2ki
       Events:
